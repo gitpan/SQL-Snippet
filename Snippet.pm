@@ -675,7 +675,7 @@ Eliminates the specified pop object.
   # $snippet->pop->pop_name->parm->parm_name->method;
   # $snippet->pop->pop_name->lim->lim_name->parm->parm_name->method;
 
-Note that all the parameters from Term::Interact (i.e., name, type, allow_null, check) are available as parameters for your paerm snippets.  I won't recount them here; see perldoc Term::Interact for the details.  Other parameters available for your parm snippet:
+Note that all the parameters from Term::Interact (i.e., name, type, allow_null, check) are available as parameters for your parm snippets.  I won't recount them here; see perldoc Term::Interact for the details.  Other parameters available for your parm snippet:
 
 =over 2
 
@@ -1424,7 +1424,7 @@ use strict;
 
 use vars qw( $VERSION );
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 use Class::MethodMaker
     new_with_init   =>  'new',

@@ -5,7 +5,7 @@ WriteMakefile(
     'PREREQ_PM'     => {
                               DBI => 0.0,
                               Class::MethodMaker => 0.0,
-                              Term::Interact => 0.41,
+                              Term::Interact => 0.43,
                        },
     ## Add these new keywords supported since 5.005
     (

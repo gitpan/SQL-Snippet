@@ -14,3 +14,7 @@ Revision history for Perl extension SQL::Snippet.
             $snippet->parm->gender->value('F');
             # incorrect, gives nice error
             $snippet->parm->gender('F');
+
+0.03 Tue Aug 20 10:59:00 2002
+    - updated Term::Interact prerequisite version
+      number in Makefile.pl to 0.43
