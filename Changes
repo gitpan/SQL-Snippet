@@ -4,3 +4,13 @@ Revision history for Perl extension SQL::Snippet.
     - original version; created by h2xs 1.21 with options
         -AX -n SQL::Snippet
 
+0.02  Thu Aug 15 16:15:00 2002
+    - many parms are no longer hard-coded, instead they 
+      are obtained via $ui->parameters
+    - BIG usability bonus - will now give intelligent error
+      if an object is called as though it were a function.
+        Ex. 
+            # correct
+            $snippet->parm->gender->value('F');
+            # incorrect, gives nice error
+            $snippet->parm->gender('F');

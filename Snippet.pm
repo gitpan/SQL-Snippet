@@ -404,7 +404,7 @@ string parameter accessor/mutator:
 
 aref parameter accessor/mutator:
 
-The 'selectable' parm value is a aref with meta-information about the snippet: what fields are selectable (and what are theor aliases) because of the inclusion of this snippet.
+The 'selectable' parm value is a aref with meta-information about the snippet: what fields are selectable (and what are their aliases) because of the inclusion of this snippet.
 
   my @selectable = (
     'field_1',
@@ -705,69 +705,14 @@ string or aref accessor/mutator method.  Operates on the current value of the pa
 package SQL::Snippet::Parm;
 use strict;
 
-use Class::MethodMaker
-    new_with_init   =>  '_new_parm_obj',
-    new_hash_init   =>  '_init_args',
-    boolean         =>  [qw/
-                             allow_null
-                                                  /],
-    get_set         =>  [
-                             # object storage
-                             qw/
-                             snippet
-                             pop
-                             lim
-                             /,
+use vars qw/ $AUTOLOAD /;
 
-                             # actual value stored here
-                             '_value',
-
-                             # meta-info for HTML interface
-                             qw/
-                             label
-                             desc
-                             /,
-
-                             # for user interaction
-                             qw/
-                             name
-                             type
-                             allow_null
-                             timeout
-                             maxtries
-                             shared_autoformat_args
-                             menu
-                             msg
-                             msg_indent
-                             msg_newline
-                             prompt
-                             reprompt
-                             prompt_indent
-                             case
-                             confirm
-                             delimiter
-                             delimiter_spacing
-                             min_elem
-                             max_elem
-                             unique_elem
-                             default
-                             interact
-                             date_format_dispaly
-                             date_format_return
-                             FH_OUT
-                             FH_IN
-                             term_width
-                             ReadMode
-                             dbh
-                             translate
-                             check
-                             /,
-                                        ];
-
-sub init {
-    my ($self, $parm, %args) = @_;
-    $self->name( $parm );
+sub _new_parm_obj {
+    shift;
+    my $self = bless {}, 'SQL::Snippet::Parm';
+    my ($parm, %args) = @_;
     $self->snippet( $args{snippet} );
+    eval { $self->name( $parm ) };  # ui should have a name parm, but you never know
     my @defaults = $self->snippet->init_parm(
                                                 parm => $parm,
                                                 ( $args{lim} ? (lim => $args{lim}) : () ),
@@ -775,19 +720,18 @@ sub init {
                                             );
     my %defaults = @defaults;
     for (keys %defaults) {
-        if ( $self->can($_) ) {
-            $self->$_( $defaults{$_} );
-        } else {
-            die "The repository tried to set a Parameter attribute that was not recognized - $_\n";
-        }
+        $self->$_( $defaults{$_} );
     }
     for (keys %args) {
-        if ( $self->can($_) ) {
-            $self->$_( $args{$_} );
-        } else {
-            die "You tried to set a Parameter attribute that was not recognized - $_\n";
-        }
+        $self->$_( $args{$_} );
     }
+    return $self;
+}
+
+sub snippet {
+    my $self = shift;
+    $self->{snippet} = shift if @_;
+    return $self->{snippet};
 }
 
 sub value {
@@ -820,7 +764,10 @@ sub value {
     {
         # set and return value via user interaction
         return $self->_value(
-            $self->snippet->ui->get( [ [%$self, @_] ] )
+                                     # TODO: why these extra braces? ###################
+                                         # slice out and pass only those parameters
+                                         # allowed by $ui, followed by @_
+            $self->snippet->ui->get( [ [ (map { exists $self->{$_} ? ($_,$self->{$_}) : () } $self->snippet->ui->parameters), @_] ] )
         );
     } else {
         if ($self->default) {
@@ -831,6 +778,46 @@ sub value {
     }
 }
 
+
+sub AUTOLOAD {
+    return if our $AUTOLOAD =~ /::DESTROY$/;
+    $AUTOLOAD =~ s/.*:://;  # trim the package name
+    my $self = shift;
+
+    my @built_ins = (
+        # for snippet object storage
+        qw/ pop lim /,
+
+        # actual value stored here
+        qw/ _value /,
+
+        # meta-info about this parm
+        qw/ label desc /,
+    );
+
+    if (grep /$AUTOLOAD/, @built_ins) {
+        $self->{$AUTOLOAD} = shift if @_;
+    } else { # check $AUTOLOAD against those parms ui allows
+        # look for boolean calls
+        if ($AUTOLOAD =~ /^(set|clear)_/){
+            my $op = $1;
+
+            my @ui_args_boolean;
+            push @ui_args_boolean, $self->snippet->ui->parameters( type=>'bool' );
+
+            # remove operator
+            $AUTOLOAD =~ s/^(set|clear)_//;
+            die "method '${op}_$AUTOLOAD' is not valid" unless grep /$AUTOLOAD/, @ui_args_boolean;
+            $self->{$AUTOLOAD} = ($op eq 'set') ? 1 : 0;
+        } else {
+            my @ui_args_non_boolean;
+            push @ui_args_non_boolean, $self->snippet->ui->parameters( type=>'!bool' );
+            die "method '$AUTOLOAD' is not valid" unless grep /$AUTOLOAD/, @ui_args_non_boolean;
+            $self->{$AUTOLOAD} = shift if @_;
+        }
+    }
+    return $self->{$AUTOLOAD};
+}
 
 #################################
 package SQL::Snippet::ParmHash;
@@ -865,6 +852,12 @@ sub AUTOLOAD {
     return if our $AUTOLOAD =~ /::DESTROY$/;
     $AUTOLOAD =~ s/.*:://;  # trim the package name
     my $self = shift;
+
+    # this AUTOLOAD method merely enables autoinstantiation and the return
+    # of parm objects.  No parameters should be passed to it.
+    if (@_) {
+        die "You passed parameters to $AUTOLOAD, but that makes no sense because $AUTOLOAD is an object.  Did you forget to specify the method you were looking for, ala ...$AUTOLOAD->method( \@parms )?"
+    }
     $self->new($AUTOLOAD) unless $self->{$AUTOLOAD};    # autoinstantiation enabler
     return $self->{$AUTOLOAD};
 }
@@ -947,6 +940,13 @@ sub init {
     }
 }
 
+sub AUTOLOAD {
+    return if our $AUTOLOAD =~ /::DESTROY$/;
+    $AUTOLOAD =~ s/.*:://;  # trim the package name
+    my $self = shift;
+    die "You tried to invoke $self->{name}\->$AUTOLOAD\, but the $self->{name} lim has no method named $AUTOLOAD";
+}
+
 
 #################################
 package SQL::Snippet::LimHash;
@@ -985,6 +985,13 @@ sub AUTOLOAD {
     return if our $AUTOLOAD =~ /::DESTROY$/;
     $AUTOLOAD =~ s/.*:://;  # trim the package name
     my $self = shift;
+
+    # this AUTOLOAD method merely enables autoinstantiation and the return
+    # of lim objects.  No parameters should be passed to it.
+    if (@_) {
+        die "You passed parameters to $AUTOLOAD, but that makes no sense because $AUTOLOAD is an object.  Did you forget to specify the method you were looking for, ala ...$
+AUTOLOAD->method( \@parms )?"
+    }
     $self->new($AUTOLOAD) unless $self->{$AUTOLOAD};    # autoinstantiation enabler
     return $self->{$AUTOLOAD};
 }
@@ -1417,7 +1424,7 @@ use strict;
 
 use vars qw( $VERSION );
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 use Class::MethodMaker
     new_with_init   =>  'new',
@@ -1626,11 +1633,14 @@ sub contextual_parm_info {
     }
 
     my @ui_args;
-    for (@ordered_parms_w_undef_value) {
+    for my $p (@ordered_parms_w_undef_value) {
         # set our interact status for each of the parms before passing them
         # to the user interface...
-        $parm->{$_}{interact} = $self->interact;
-        push @ui_args, $parm->{$_};
+        $parm->{$p}{interact} = $self->interact;
+
+        # for this parm, push an aref of only those parameters
+        # allowed by ui onto @ui_args
+        push @ui_args, [ map { exists $parm->{$p}{$_} ? ($_, $parm->{$p}{$_}) : () } $self->ui->parameters ];
     }
     my @vals = $self->ui->get( \@ui_args );
 

@@ -1,9 +1,6 @@
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl test.pl'
 
-#TODO: remove this use lib!
-use lib "'D:/My Documents/Temp/SQL'";
-
 use Test;
 use strict;
 use diagnostics;

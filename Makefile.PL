@@ -4,6 +4,7 @@ WriteMakefile(
     'VERSION_FROM'  => 'Snippet.pm',
     'PREREQ_PM'     => {
                               DBI => 0.0,
+                              Class::MethodMaker => 0.0,
                               Term::Interact => 0.41,
                        },
     ## Add these new keywords supported since 5.005
